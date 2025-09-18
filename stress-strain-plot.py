@@ -72,15 +72,6 @@ for fpath in fpaths:
     graph_df.loc[0, 'Stress (True)'] = stress_col[0]
     graph_df.loc[1:, 'Stress (True)'] = stress_col[1:].astype(float) * (1 - strain_col[1:].astype(float))
 
-    # Derivatives
-    slope = stress_col.copy()
-    slope[1:] = stress_col[1:].diff() / strain_col[1:].astype(float).diff()
-    graph_df['Slope'] = slope
-
-    curvature = slope.copy()
-    curvature[1:] = slope[1:].diff() / strain_col[1:].astype(float).diff()
-    graph_df['Curvature'] = curvature
-
     # Modulus calculation
     if not mod_range is None:
         num_idxs = len(slope)
