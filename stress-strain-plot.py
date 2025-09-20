@@ -14,6 +14,7 @@ parser.add_argument('-f', '--filepath', help="The csv file to read")
 parser.add_argument('-c', '--curve-threshold', help="The curvature/second derivative threshold for finding the linear region of the stress strain plot", type=float, default=0.05)
 parser.add_argument('-t','--true-stress', help="If given, also plots the true stress (compared to engineering stress)", action='store_true')
 parser.add_argument('-m','--modulus-range', help="The range of the dataset (where [0:1] is full range) to average slope over to calculate elastic modulus")
+parser.add_argument('-r', '--range-estimation', help="If specified, graphs just the strain and stress of each vs timestamp, to get ranges for slope estimation" ,action='store_true')
 
 args = parser.parse_args()
 
@@ -76,7 +77,7 @@ for fpath in fpaths:
 
     # Modulus calculation
     if not mod_range is None:
-        num_idxs = len(slope)
+        num_idxs = len(stress_col)
         min_idx = int(mod_range[0] * num_idxs)
         max_idx = int(mod_range[1] * num_idxs)
 
@@ -128,7 +129,14 @@ label_freq = str_range / (num_labels)
 
 for mat_name in mat_dfs:
     df = mat_dfs[mat_name]
-    if args.true_stress:
+    if args.range_estimation:
+        strain = df['Strain'][1:].astype(float)
+        stress = df['Stress'][1:].astype(float)
+        stress_normalized = (stress.copy() / max(stress)) * max(strain)
+        timestamps = np.array([float(n)/float(len(strain)) for n in range(len(strain))])
+        ax.plot(timestamps, strain, label=mat_name+" strain")
+        ax.plot(timestamps, stress_normalized, label=mat_name+" strain")
+    elif args.true_stress:
         strain = df['Strain'][1:].astype(float)
         stress = df['Stress'][1:].astype(float)
         ax.plot(strain, stress, label=mat_name+" (Eng)")
