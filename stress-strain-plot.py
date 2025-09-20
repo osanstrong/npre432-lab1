@@ -36,7 +36,7 @@ for fpath in fpaths:
         line = lines[i]
         if line.startswith('Time,Disp'):
             header_idx = i
-        elif line.startswith('Diameter'):
+        elif line.startswith('Diameter') or line.startswith('Gage Diameter'):
             dia_mm = float(line.split(',')[-1].replace('"', ''))
         elif line.startswith('Material'):
             mat_name = line.split(',')[-1].replace('"','')
@@ -64,6 +64,8 @@ for fpath in fpaths:
         strain_col = graph_df['Composite strain']
     elif "Compressive strain (Displacement)" in cols:
         strain_col = graph_df['Compressive strain (Displacement)']
+    elif "Strain 1" in cols:
+        strain_col = graph_df['Strain 1']
     
     graph_df.loc[:, 'Strain'] = strain_col
 
