@@ -1,3 +1,7 @@
 # WSL identification files
 *:Zone.Identifier
 *:mshield
+# Other temp files
+.vscode
+# Figure folters
+*_figs/*
