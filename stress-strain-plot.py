@@ -41,6 +41,10 @@ for fpath in fpaths:
             dia_mm = float(line.split(',')[-1].replace('"', ''))
         elif line.startswith('Material'):
             mat_name = line.split(',')[-1].replace('"','')
+        elif line.startswith('Rockwell Hardness'):
+            rockwell_hardness = line.split(',')[-1].replace('"', '')
+        elif line.startswith('Rockwell Scale'):
+            rockwell_scale = line.split(',')[-1].replace('"', '')
 
     # unit_line = lines.pop(header_idx+1) #It also includes a line about units 
     graph_lines = lines[header_idx:]
@@ -52,10 +56,15 @@ for fpath in fpaths:
     # Confirm we're working with the units we know about
     assert graph_df['Force'][0] == '(kN)' 
 
+
     print(f"Diameter: {dia_mm} mm")
 
     area_m2 = (dia_mm*0.001*0.5)**2 * PI
     print(f"Area: {area_m2} m²")
+
+    if not mod_range is None: print(f"Modulus range: {mod_range}")
+
+    print(f"Rockwell Hardness: {rockwell_hardness} {rockwell_scale}")
 
     graph_df.loc[:,'Stress'] = None
     graph_df.loc[0, 'Stress'] = '(kPa)'
@@ -78,7 +87,7 @@ for fpath in fpaths:
     # Modulus calculation
     if not mod_range is None:
         num_idxs = len(stress_col)
-        min_idx = int(mod_range[0] * num_idxs)
+        min_idx = max(int(mod_range[0] * num_idxs), 1)
         max_idx = int(mod_range[1] * num_idxs)
 
         stress_range = stress_col[min_idx:max_idx].astype(float)
@@ -95,13 +104,22 @@ for fpath in fpaths:
         graph_df['Offset'] = np.nan
         graph_df.loc[1:,'Offset'] = elastic_offset
         first_below = (graph_df['Stress'][1:].astype(float) - elastic_offset).lt(0.0).idxmax()
-        yield_str = graph_df["Stress"][first_below-1]
+        yield_str = float(graph_df["Stress"][first_below-1])
         mat_yields[mat_name] = yield_str
         print(f"Yield Strength: {yield_str} {stress_col[0]}")
+
+        num_strain = strain_col[1:].astype(float)
+        num_stress = stress_col[1:].astype(float)
+        integ_modresil = np.trapz(num_strain[:first_below-1], num_stress[:first_below-1])
+        simple_modresil = (yield_str * num_strain[first_below-1]) / 2
+        print(f"Modulus of Resilience (Integrated): {integ_modresil} {stress_col[0]}")
+        print(f"Modulus of Resilience (Simple Triangle): {simple_modresil} {stress_col[0]}")
 
         mat_ultimates[mat_name] = max(graph_df['Stress'][1:].astype(float))
         print(f"Ultimate Strength: {mat_ultimates[mat_name]} {stress_col[0]}")
 
+    # Greatest strain value:
+    print(f"Maxmimum strain: {max(strain_col[1:].astype(float))} {strain_col[0]}")
 
 
     print(mat_name)
@@ -132,7 +150,7 @@ for mat_name in mat_dfs:
     if args.range_estimation:
         strain = df['Strain'][1:].astype(float)
         stress = df['Stress'][1:].astype(float)
-        stress_normalized = (stress.copy() / max(stress)) * max(strain)
+        stress_normalized = stress.copy()# / max(stress) * max(strain)
         timestamps = np.array([float(n)/float(len(strain)) for n in range(len(strain))])
         ax.plot(timestamps, strain, label=mat_name+" strain")
         ax.plot(timestamps, stress_normalized, label=mat_name+" strain")
@@ -141,11 +159,11 @@ for mat_name in mat_dfs:
         stress = df['Stress'][1:].astype(float)
         ax.plot(strain, stress, label=mat_name+" (Eng)")
         ax.plot(strain, df['Stress (True)'][1:].astype(float), label=mat_name+" (True)")
-        num_idxs = len(strain)
-        min_idx = int(mod_range[0] * num_idxs)
-        max_idx = int(mod_range[1] * num_idxs)
+        #num_idxs = len(strain)
+        #min_idx = int(mod_range[0] * num_idxs)
+        #max_idx = int(mod_range[1] * num_idxs)
         # ax.plot(df['Strain'][min_idx:max_idx].astype(float), df['Strain'][min_idx:max_idx].astype(float) * mat_mods[mat_name], label=mat_name+" Slope")
-        ax.plot(strain, df['Offset'][1:].astype(float), label=mat_name+" Slope")
+        if not (mod_range is None): ax.plot(strain, df['Offset'][1:].astype(float), label=mat_name+" 2% offset yiel")
         # ax.plot([df['Strain'][max_idx]]*2, [0, max(df['Strain'][1:].astype(float) * mat_mods[mat_name])])
     else:
         ax.plot(df['Strain'][1:].astype(float), df['Stress'][1:].astype(float), label=mat_name)
