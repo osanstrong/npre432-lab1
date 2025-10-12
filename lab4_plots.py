@@ -65,24 +65,57 @@ for path in trans_paths:
     })
 pprint.pprint(transitions)
 
-fig = plt.figure()
-ax = fig.subplots()
-ax.set_xlabel('Time (s)')
-ax.set_ylabel('Temperature (⁰C)')
-xmin = min(times)
-xmax = max(times)
-print(chosen_section)
-melts = transitions[chosen_section][c]
-# ax.hlines(melts[0], xmin, xmax, label=f"Liquidus/Solidus (melting point): {melts[0]}⁰C", colors='C1')
-ax.hlines(melts[0], xmin, xmax, label=f"Liquidus: {melts[0]}⁰C", colors=f'C1')
-ax.hlines(melts[1], xmin, xmax, label=f"Solidus: {melts[1]}⁰C", colors=f'C1')
-ax.plot(times, hot_temp, label=f"{c}% Bismuth, {100-c}% Tin")
-# i = 0
-# for section in transitions:
-#     dat = transitions[section]
-#     i+=1
-#     for conc in dat:
-#         if int(c) == int(conc):
-#             ax.hlines(dat[c], xmin, xmax, label=section, colors=f'C{i}')
+# fig = plt.figure()
+# ax = fig.subplots()
+# ax.set_xlabel('Time (s)')
+# ax.set_ylabel('Temperature (⁰C)')
+# xmin = min(times)
+# xmax = max(times)
+# print(chosen_section)
+# melts = transitions[chosen_section][c]
+# # ax.hlines(melts[0], xmin, xmax, label=f"Liquidus/Solidus (melting point): {melts[0]}⁰C", colors='C1')
+# ax.hlines(melts[0], xmin, xmax, label=f"Liquidus: {melts[0]}⁰C", colors=f'C1')
+# ax.hlines(melts[1], xmin, xmax, label=f"Solidus: {melts[1]}⁰C", colors=f'C1')
+# ax.plot(times, hot_temp, label=f"{c}% Bismuth, {100-c}% Tin")
+# # i = 0
+# # for section in transitions:
+# #     dat = transitions[section]
+# #     i+=1
+# #     for conc in dat:
+# #         if int(c) == int(conc):
+# #             ax.hlines(dat[c], xmin, xmax, label=section, colors=f'C{i}')
+# fig.legend()
+# plt.show()
+m_Sn = 118.71
+m_Bi = 208.98
+def pBi_to_xSn(pBi):
+    '''
+    Convert mass percentage bismuth to atom fraction tin
+    '''
+    uxBi = pBi / m_Bi
+    uxSn = (100-pBi) / m_Sn
+    return uxSn / (uxSn + uxBi)
+img_path = "L4D/xSn_phase-dia_cropped.png"
+img = plt.imread(img_path)
+fig, ax = plt.subplots()
+ax.imshow(img, extent=[0,1,0,300])
+plt.gca().set_aspect(1/300)
+ax.set_xlabel("Atomic fraction xSn")
+ax.set_ylabel("Temperature (⁰C)")
+i = 0
+shapes=['o', 's', '*','^','v','<','>']
+for section in sorted(transitions.keys()):
+    if not section in ['NPRE432', 'ME330_S1', 'ME330_S2', 'ME330_S3', 'ME330_S4', 'ME330_S5']:
+        continue
+    dat = transitions[section]
+    concs = []
+    temps = []
+    for conc in dat:
+        transes = dat[conc]
+        for trans in transes:
+            concs.append(pBi_to_xSn(conc)) #ATOM fraction of TIN not MASS percent BISMUTH
+            temps.append(trans)
+    ax.scatter(concs, temps, label=section, marker=shapes[i], facecolors='none', edgecolors=f'C{i}', linewidths=1.5)
+    i+=1
 fig.legend()
 plt.show()
