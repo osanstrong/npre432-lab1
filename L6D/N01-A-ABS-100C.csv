@@ -1,0 +1,23 @@
+[Shared Parameters]
+
+Comment,Plate Impact, 76mm support dia, 12.7mm hemispherical tup tip, 
+
+[Shared Data]
+
+Test Name,N01-A-ABS-100C,
+Instrument,8200,
+Operator,N01-A,
+Date,10/27/2025 5:42:47 PM,
+
+[Step [1] Data]
+
+Specimen ID,ABS.BW,
+Impact Height (Nominal),920.000,mm
+Total Mass,6.202,kg
+Thickness,3.130,mm
+Start Velocity,4.158,m/s
+Start Time,4.740,ms
+Total Time,11.640,ms
+Peak Force,2087.871,N
+Total Energy,33.387,J
+
