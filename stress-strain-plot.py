@@ -4,6 +4,8 @@ import argparse
 from io import StringIO
 import numpy as np
 from scipy.optimize import curve_fit
+from scipy.integrate import trapezoid
+import pprint
 
 ## Constants
 PI = 3.141592653589
@@ -21,7 +23,8 @@ parser.add_argument('-p', '--power-law', help="Plot a power law relationship (si
 
 args = parser.parse_args()
 
-fpaths:list = args.filepath.split(';')
+fpath_arg = args.filepath
+fpaths:list = fpath_arg.split(';')
 mat_dfs:dict = {}
 mod_range:tuple = None
 mat_mods:dict = {}
@@ -30,6 +33,18 @@ mat_yields:dict = {} #Yield Strengths of materials
 mat_ultimates:dict = {} #Ultimate Strengths of materials
 mat_k:dict = {} #K values of power law
 mat_n:dict = {} #n values of power law
+firsts_below:dict = {} #Index which intersects with yield offset
+
+misc_dat:dict = { #Miscellaneous data sets, typically for plotting different numerical properties of different materials against each other
+    "Name": [],
+    "BHN": {},
+    "UTS": {},
+    # "TempTemp": {},
+    "Yield": {},
+    "EMod": {},
+    "MaxStrain": {},
+}
+
 if not args.modulus_range is None:
     bounds = args.modulus_range.split("-")
     mod_range = (float(bounds[0]), float(bounds[1]))
@@ -45,10 +60,35 @@ if not args.power_law is None:
     bounds = args.power_law.replace('nl', '').replace('ng','').split('-')
     pl_range = (float(bounds[0]), float(bounds[1]))
 
+if 'lab 5' in fpath_arg:
+    if "q1" in fpath_arg:
+        print("Using L5 data!")
+        q1_tags = [
+            "2A4340AN", # Annealed 
+            "1D4340NM", # Normalized
+            "1C4340WQ2", # Water Quenched
+            "2D4340OQ", # Oil Quenched
+            "2B4340OQT400C", # Oil Quenched Temper 400C
+            "1C4340OQT600C", # Oil Quenched Temper 600C
+        ]
+        q1_paths = [f"L5D/N0{tag}_1.csv" for tag in q1_tags]
+        fpaths = q1_paths
+    elif "q6" in fpath_arg:
+        q6_tags = [
+            "2D4340OQ", # Oil Quenched
+            "2B4340OQT400C", # Oil Quenched Temper 400C
+            "1C4340OQT600C", # Oil Quenched Temper 600C
+        ]
+        q6_paths = [f"L5D/N0{tag}_1.csv" for tag in q6_tags]
+        fpaths = q6_paths
+
+
 for fpath in fpaths:
     ## Get file text, and process the curve data out
     with open(fpath) as file: raw_text = file.read()
+    print(f"File: {fpath}")
     lines = raw_text.splitlines()
+    h_treat = "None"
     for i in range(len(lines)):
         line = lines[i]
         if line.startswith('Time,Disp'):
@@ -61,6 +101,11 @@ for fpath in fpaths:
             rockwell_hardness = line.split(',')[-1].replace('"', '')
         elif line.startswith('Rockwell Scale'):
             rockwell_scale = line.split(',')[-1].replace('"', '')
+        elif line.startswith('Heat Treatment'):
+            h_treat = line.split(',')[-1].replace('"','')
+
+    mat_name = f"{mat_name} ({h_treat})"
+    misc_dat['Name'].append(mat_name)
 
     # unit_line = lines.pop(header_idx+1) #It also includes a line about units 
     graph_lines = lines[header_idx:]
@@ -81,6 +126,14 @@ for fpath in fpaths:
     if not mod_range is None: print(f"Modulus range: {mod_range}")
 
     print(f"Rockwell Hardness: {rockwell_hardness} {rockwell_scale}")
+    if 'HRC' in rockwell_scale: #If it's HRC we can also calculate Brinell Harndess
+        brinell_hardness = 131.7 * np.exp(0.0252 * float(rockwell_hardness))
+    elif 'HRB' in rockwell_scale:
+        brinell_hardness = 33.22 * np.exp(0.0192 * float(rockwell_hardness))
+    if not brinell_hardness is None: 
+        print(f"Brinell Hardness: {brinell_hardness} BHN")
+        misc_dat['BHN'][mat_name] = brinell_hardness
+
 
     graph_df.loc[:,'Stress'] = None
     graph_df.loc[0, 'Stress'] = '(kPa)'
@@ -105,6 +158,12 @@ for fpath in fpaths:
     graph_df.loc[0, 'Strain (True)'] = strain_col[0]
     graph_df.loc[1:, 'Strain (True)'] = np.log(strain_col[1:].astype(float) + 1)
 
+    # Get toughness by integrating until fracture
+    max_strain_idx = graph_df['Strain'].idxmax() - 1
+    toughness = np.trapz(graph_df['Stress'][1:max_strain_idx].astype(float), graph_df['Strain'][1:max_strain_idx].astype(float))
+    sanity_check = float(graph_df['Strain'][max_strain_idx])*float(graph_df['Stress'][max_strain_idx])
+    print(f"Toughness: {toughness}  {stress_col[0]} (vs sanity check of {sanity_check})")
+    
     # Modulus calculation
     if not mod_range is None:
         num_idxs = len(stress_col)
@@ -119,25 +178,36 @@ for fpath in fpaths:
         mat_mods[mat_name] = m # Average slope over the range
         mat_bs[mat_name] = b
         print(f"Elastic Modulus: {mat_mods[mat_name]} {stress_col[0]}")
+        misc_dat['EMod'][mat_name] = m
 
         # Make straight line slightly offset from elastic region and find where it intersects eng stress to get yield strength
         elastic_offset = (strain_col[1:].astype(float) - YIELD_OFFSET) * mat_mods[mat_name] + mat_bs[mat_name]
+
         graph_df['Offset'] = np.nan
         graph_df.loc[1:,'Offset'] = elastic_offset
         first_below = (graph_df['Stress'][1:].astype(float) - elastic_offset).lt(0.0).idxmax()
-        yield_str = float(graph_df["Stress"][first_below-1])
+        firsts_below[mat_name] = first_below
+        found_yield = False
+        print(f"idx of first yield: {first_below}")
+        if first_below > 1:
+            yield_str = float(graph_df["Stress"][first_below-1])
+            found_yield = True
+        else:
+            yield_str = None
         mat_yields[mat_name] = yield_str
         print(f"Yield Strength: {yield_str} {stress_col[0]}")
+        misc_dat['Yield'][mat_name] = yield_str
 
         num_strain = strain_col[1:].astype(float)
         num_stress = stress_col[1:].astype(float)
-        integ_modresil = np.trapz(num_strain[:first_below-1], num_stress[:first_below-1])
-        simple_modresil = (yield_str * num_strain[first_below-1]) / 2
+        integ_modresil = np.trapz(num_strain[:first_below-1], num_stress[:first_below-1]) if not yield_str is None else None
+        simple_modresil = (yield_str * num_strain[first_below-1]) / 2 if not yield_str is None else None
         print(f"Modulus of Resilience (Integrated): {integ_modresil} {stress_col[0]}")
         print(f"Modulus of Resilience (Simple Triangle): {simple_modresil} {stress_col[0]}")
 
-        mat_ultimates[mat_name] = max(graph_df['Stress'][1:].astype(float))
-        print(f"Ultimate Strength: {mat_ultimates[mat_name]} {stress_col[0]}")
+    mat_ultimates[mat_name] = max(graph_df['Stress'][1:].astype(float))
+    print(f"Ultimate Strength: {mat_ultimates[mat_name]} {stress_col[0]}")
+    misc_dat['UTS'][mat_name] = mat_ultimates[mat_name]
 
     # Power Law calculation
     if power_law:
@@ -155,8 +225,10 @@ for fpath in fpaths:
         mat_n[mat_name] = n
 
     # Greatest strain value:
-    print(f"Maxmimum strain: {max(strain_col[1:].astype(float))} {strain_col[0]}")
-
+    # max_strain = float(strain_col[max_strain_idx])
+    max_strain = max(strain_col[1:].astype(float))
+    print(f"Maxmimum strain: {max_strain} {strain_col[0]}")
+    misc_dat['MaxStrain'][mat_name] = max_strain
 
     print(mat_name)
     print(graph_df)
@@ -164,6 +236,14 @@ for fpath in fpaths:
     mat_dfs[mat_name] = graph_df
         
 
+pprint.pprint(misc_dat)
+for dat_type in misc_dat:
+    if dat_type == "Name":
+        print(f"names = {misc_dat[dat_type]}")
+    else: 
+        names = misc_dat['Name']
+        print(f"{dat_type.lower()} = {[misc_dat[dat_type][name] for name in names]}")
+    
 
 
 
@@ -199,7 +279,9 @@ for mat_name in mat_dfs:
         #min_idx = int(mod_range[0] * num_idxs)
         #max_idx = int(mod_range[1] * num_idxs)
         # ax.plot(df['Strain'][min_idx:max_idx].astype(float), df['Strain'][min_idx:max_idx].astype(float) * mat_mods[mat_name], label=mat_name+" Slope")
-        if not (mod_range is None): ax.plot(strain, df['Offset'][1:].astype(float), label=mat_name+" 2% offset yiel")
+        offset = df['Offset'][1:].astype(float)
+        minpos_idx = offset.apply(abs).idxmin()
+        if not (mod_range is None): ax.plot(strain[minpos_idx:firsts_below[mat_name]], offset[minpos_idx:firsts_below[mat_name]].astype(float), label=mat_name+" 0.2% offset yield")
         # ax.plot([df['Strain'][max_idx]]*2, [0, max(df['Strain'][1:].astype(float) * mat_mods[mat_name])])
     elif graph_pl:
         true_strain = df['Strain (True)'][1:].astype(float)
@@ -223,7 +305,7 @@ if not power_law:
 ax.set_xlabel("Strain (mm/mm)")
 ax.set_ylabel("Stress (kPa)")
 
-fig.legend()
+ax.legend(loc='lower right')
 fig.set_label("Stress vs strain of uh idk actually")
 plt.show()
 
