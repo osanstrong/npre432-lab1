@@ -1,0 +1,25 @@
+[Shared Parameters]
+
+Comment,Charpy Impact, 
+Span,40.000,mm
+
+[Shared Data]
+
+Test Name,N01-D-2024-NU,
+Instrument,8250,
+Operator,N01-D,
+Date,10/27/2025 5:13:54 PM,
+
+[Step [1] Data]
+
+Specimen ID,2024,NR,NR0.2,
+Impact Height (Nominal),740.000,mm
+Total Mass,12.778,kg
+Width,7.960,mm
+Thickness,9.540,mm
+Start Velocity,3.808,m/s
+Start Time,0.000,ms
+Total Time,2.172,ms
+Peak Force,12004.657,N
+Total Energy,61.144,J
+

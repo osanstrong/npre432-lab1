@@ -1,0 +1,23 @@
+[Shared Parameters]
+
+Comment,Plate Impact, 76mm support dia, 12.7mm hemispherical tup tip, 
+
+[Shared Data]
+
+Test Name,N01-D-PMMA-BW,
+Instrument,8200,
+Operator,N01-D,
+Date,10/27/2025 5:00:04 PM,
+
+[Step [1] Data]
+
+Specimen ID,PMMA,BW,
+Impact Height (Nominal),920.000,mm
+Total Mass,6.202,kg
+Thickness,3.130,mm
+Start Velocity,3.841,m/s
+Start Time,5.020,ms
+Total Time,13.420,ms
+Peak Force,3111.513,N
+Total Energy,44.029,J
+

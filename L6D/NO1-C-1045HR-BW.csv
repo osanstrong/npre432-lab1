@@ -1,0 +1,25 @@
+[Shared Parameters]
+
+Comment,Charpy Impact, 
+Span,40.000,mm
+
+[Shared Data]
+
+Test Name,NO1-C-1045HR-BW,
+Instrument,8250,
+Operator,NO1-C,
+Date,10/27/2025 4:57:52 PM,
+
+[Step [1] Data]
+
+Specimen ID,1045HR,BW,NR0.1081,
+Impact Height (Nominal),745.000,mm
+Total Mass,12.751,kg
+Width,7.680,mm
+Thickness,9.290,mm
+Start Velocity,3.781,m/s
+Start Time,0.000,ms
+Total Time,0.750,ms
+Peak Force,13882.070,N
+Total Energy,13.947,J
+

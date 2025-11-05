@@ -1,0 +1,2 @@
+Program: KIC Compact Tension Specimen DataDate: Mon, Oct 27, 2025Time: 6:14 PMCourse: NPRE432Section: N01-CDMaterial: 7075-T6Precrack Data:Loading wave Shape: HaversineLow:   0.50 kNHigh:   8.00 kNFrequency: 4.00 HzNumber of cycles:   22000Specimen Measurements: Thickness (B or t):  25.39 mmWidth (W):  51.30 mmCrack tip to end (z):  26.71 mm	 26.02 mm	 26.44 mm	 25.97 mm	 26.42 mm	 26.36 mm
+

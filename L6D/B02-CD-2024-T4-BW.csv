@@ -1,0 +1,25 @@
+[Shared Parameters]
+
+Comment,Charpy Impact, 
+Span,40.000,mm
+
+[Shared Data]
+
+Test Name,B02-CD-2024-T4-BW,
+Instrument,8250,
+Operator,B02-AB,
+Date,10/27/2025 5:45:32 PM,
+
+[Step [1] Data]
+
+Specimen ID,2024-T4, BW, NR 0.1082mm,
+Impact Height (Nominal),740.000,mm
+Total Mass,12.778,kg
+Width,6.970,mm
+Thickness,9.510,mm
+Start Velocity,3.808,m/s
+Start Time,0.000,ms
+Total Time,0.598,ms
+Peak Force,7843.542,N
+Total Energy,8.137,J
+
